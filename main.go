@@ -1,13 +1,22 @@
 package main
 
-
 import (
-	_"acm-payments/acm"
+	"acm-payments/acm"
+	"flag"
+	"fmt"
 )
 
 
 
 func main() {
-	//amcC := acm.NewAcmCompany()
+	flag.Parse()
+	result := flag.Arg(0)
+	amcC := acm.NewAcmCompany()
+	data := amcC.LoadFile(result)
+	doPayments := amcC.ProcessData(data)
 
+	for key,val := range doPayments {
+		fmt.Printf("Name %s total to earn %f$\n", key,val)
+	}
+	
 }

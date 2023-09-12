@@ -1,55 +1,54 @@
 package acm
 
 import (
+	"bufio"
+	"os"
 	"strings"
 	"time"
 )
 
 type acmCompany struct {
-	toPay map[string]int
+	toPay map[string]float64
 }
 
-func (ac *acmCompany) operation(payrange []acmRange, name string, start, end time.Time) {
-	for i, acm := range payrange {
-		if start.Compare(ac.formater(acm.EndRange)) > 0 {
+func (ac acmCompany) operation(payrange []acmRange, name string, start, end time.Time) {
+	for i := 0; i < len(payrange); i++ {
+		if start.Compare(ac.formater(payrange[i].EndRange)) > 0 {
 			continue
 		} else {
-			if (start.Compare(ac.formater(acm.StartRange)) > -1) &&
-				(start.Compare(ac.formater(acm.EndRange)) < 1) && (end.Compare(ac.formater(acm.EndRange)) < 1) {
-				hours := end.Sub(start).Abs().Hours()
-				ac.toPay[name] += int(hours) * acm.Payment
-			} else if (start.Compare(ac.formater(acm.StartRange)) > -1) &&
-				(start.Compare(ac.formater(acm.EndRange)) < 1) &&
-				(end.Compare(ac.formater(acm.EndRange)) > 0) {
-				acmEnd := ac.formater(acm.EndRange)
-				hours := acmEnd.Sub(start).Abs().Hours()
-				if hours == 0.0 {
-					hours = 1.0
-				}
-				ac.toPay[name] += int(hours) * acm.Payment
-				for _, acmk := range payrange[i+1:] {
-					if (end.Compare(ac.formater(acmk.StartRange)) > -1) &&
-						(end.Compare(ac.formater(acmk.EndRange)) < 1) {
-						acmkStart := ac.formater(acmk.StartRange)
-						hours := end.Sub(acmkStart).Abs().Hours()
-						ac.toPay[name] += int(hours) * acmk.Payment
-					}else {
-						acmkStart := ac.formater(acmk.StartRange)
-						acmkEnd := ac.formater(acmk.EndRange)
-						hours := acmkEnd.Sub(acmkStart).Abs().Hours()
-						ac.toPay[name] += int(hours) * acmk.Payment
+			if (start.Compare(ac.formater(payrange[i].StartRange)) > -1) &&
+				(start.Compare(ac.formater(payrange[i].EndRange)) < 1) && (end.Compare(ac.formater(payrange[i].EndRange)) < 1) {
+				hours := end.Sub(start).Hours()
+				ac.toPay[name] += hours * payrange[i].Payment
+			} else if (start.Compare(ac.formater(payrange[i].StartRange)) > -1) &&
+				(start.Compare(ac.formater(payrange[i].EndRange)) < 1) &&
+				(end.Compare(ac.formater(payrange[i].EndRange)) > 0) {
+				acmEnd := ac.formater(payrange[i].EndRange)
+				hours := acmEnd.Sub(start).Hours()
+				ac.toPay[name] += hours * payrange[i].Payment
+				for x := 1; x <= len(payrange[i + 1:]); x++ {
+					if (end.Compare(ac.formater(payrange[x].StartRange)) > -1) &&
+						(end.Compare(ac.formater(payrange[x].EndRange)) < 1) {
+						acmkStart := ac.formater(payrange[x].StartRange)
+						hours := end.Sub(acmkStart).Hours()
+						ac.toPay[name] += hours * payrange[x].Payment
+					}else if end.Compare(ac.formater(payrange[x].EndRange)) > 0 {
+						acmkStart := ac.formater(payrange[x].StartRange)
+						acmkEnd := ac.formater(payrange[x].EndRange)
+						hours := acmkEnd.Sub(acmkStart).Hours()
+						ac.toPay[name] += hours * payrange[x].Payment
 					}
 				}
+			
 			}
 
 		}
 	}
-
 }
 
 // Convert from string to time (hours)
 func (ac acmCompany) formater(hours string) time.Time {
-	value, err := time.Parse("10:06", hours)
+	value, err := time.Parse("15:05", hours)
 	if err != nil {
 		panic(err)
 	}
@@ -57,8 +56,8 @@ func (ac acmCompany) formater(hours string) time.Time {
 }
 
 // Process data from an array
-func (ac *acmCompany) ProcessData(employees []string) map[string]int {
-	
+func (ac acmCompany) ProcessData(employees []string) map[string]float64 {
+	ac.toPay = make(map[string]float64)
 	for _, emp := range employees {
 		name, data := strings.Split(emp, "=")[0], strings.Split(strings.Split(emp, "=")[1], ",")
 		ac.toPay[name] = 0
@@ -68,7 +67,7 @@ func (ac *acmCompany) ProcessData(employees []string) map[string]int {
 			start := ac.formater(timeRange[0])
 			end := ac.formater(timeRange[1])
 			switch day {
-			case "MO", "TU", "ME", "FR":
+			case "MO", "TU", "WE", "TH", "FR":
 				payrange := rangePayments("Week")
 				ac.operation(payrange, name, start, end)
 
@@ -84,6 +83,26 @@ func (ac *acmCompany) ProcessData(employees []string) map[string]int {
 	}
 	return ac.toPay
 
+}
+
+// Load data from files
+func (ac acmCompany) LoadFile(path string) []string {
+	var array []string
+	if _,err := os.Stat(path); os.IsExist(err) {
+		panic(err)
+	}
+	file , err := os.OpenFile(path, os.O_RDONLY, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	buffer := bufio.NewScanner(file)
+	for buffer.Scan() {
+		line := buffer.Text()
+		array = append(array, line)
+	}
+
+	return array
 }
 
 // AcmCompany builder
